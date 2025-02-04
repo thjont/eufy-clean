@@ -7,15 +7,16 @@ from .controllers.MqttConnect import MqttConnect
 
 
 class EufyClean:
-    def __init__(self, username: str, password: str):
+    def __init__(self, username: str, password: str, region: str = 'EU'):
         print('EufyClean constructor')
 
         self.username = username
         self.password = password
         self.openudid = ''.join(random.choices(string.hexdigits, k=32))
+        self.region = region
 
     async def init(self) -> list[dict[str, Any]]:
-        self.eufyCleanApi = EufyLogin(self.username, self.password, self.openudid)
+        self.eufyCleanApi = EufyLogin(self.username, self.password, self.openudid, self.region)
         await self.eufyCleanApi.init()
 
         return self.eufyCleanApi.mqtt_devices

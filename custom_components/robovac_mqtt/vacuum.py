@@ -28,14 +28,15 @@ async def async_setup_entry(
 
     username = config_entry.data[CONF_USERNAME]
     password = config_entry.data[CONF_PASSWORD]
+    region = config_entry.data.get('region', 'EU')
 
-    eufy_clean = EufyClean(username, password)
+    eufy_clean = EufyClean(username, password, region)
     await eufy_clean.init()
 
     for vacuum in await eufy_clean.get_devices():
         device = await eufy_clean.init_device(vacuum['deviceId'])
         await device.connect()
-        _LOGGER.info("Adding vacuum %s", device.device_id)
+        _LOGGER.info('Adding vacuum %s', device.device_id)
         entity = RoboVacMQTTEntity(device)
         hass.data[DOMAIN][VACS][device.device_id] = entity
         async_add_entities([entity])
@@ -62,7 +63,7 @@ class RoboVacMQTTEntity(StateVacuumEntity):
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, item.device_id)},
             name=self._attr_name,
-            manufacturer="Eufy",
+            manufacturer='Eufy',
             model=self._attr_model_code,
         )
 
@@ -103,7 +104,7 @@ class RoboVacMQTTEntity(StateVacuumEntity):
 
     async def async_return_to_base(self, **kwargs):
         """Set the vacuum cleaner to return to the dock."""
-        _LOGGER.info("Return home Pressed")
+        _LOGGER.info('Return home Pressed')
         await self.vacuum.go_home()
 
     async def async_start(self, **kwargs):
@@ -117,29 +118,29 @@ class RoboVacMQTTEntity(StateVacuumEntity):
 
     async def async_clean_spot(self, **kwargs):
         """Perform a spot clean-up."""
-        _LOGGER.info("Spot Clean Pressed")
+        _LOGGER.info('Spot Clean Pressed')
         await self.vacuum.spot_clean()
 
     async def async_set_fan_speed(self, fan_speed: str, **kwargs):
         """Set fan speed."""
         if fan_speed not in EUFY_CLEAN_CLEAN_SPEED:
-            raise ValueError(f"Invalid fan speed: {fan_speed}")
-        _LOGGER.info(f"Fan Speed {fan_speed} Selected")
+            raise ValueError(f'Invalid fan speed: {fan_speed}')
+        _LOGGER.info(f'Fan Speed {fan_speed} Selected')
         await self.vacuum.set_clean_speed(fan_speed)
 
     async def async_send_command(
         self, command: Literal['scene_clean'] | Literal['room_clean'], params: dict | list | None = None, **kwargs
     ) -> None:
         """Send a command to a vacuum cleaner."""
-        _LOGGER.info("Send Command %s Pressed", command)
-        if command == "scene_clean":
-            if not params or not isinstance(params, dict) or "scene" not in params:
-                raise ValueError("params[scene] is required for scene_clean command")
-            scene = params["scene"]
+        _LOGGER.info('Send Command %s Pressed', command)
+        if command == 'scene_clean':
+            if not params or not isinstance(params, dict) or 'scene' not in params:
+                raise ValueError('params[scene] is required for scene_clean command')
+            scene = params['scene']
             await self.vacuum.scene_clean(scene)
-        elif command == "room_clean":
-            if not params or not isinstance(params, dict) or not isinstance(params.get("rooms"), list):
-                raise ValueError("params[rooms] is required for room_clean command")
+        elif command == 'room_clean':
+            if not params or not isinstance(params, dict) or not isinstance(params.get('rooms'), list):
+                raise ValueError('params[rooms] is required for room_clean command')
             rooms = [int(r) for r in params['rooms']]
             await self.vacuum.room_clean(rooms)
         else:

@@ -1,7 +1,10 @@
 import hashlib
+import logging
 from typing import Any
 
 import aiohttp
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class EufyApi:
@@ -13,6 +16,7 @@ class EufyApi:
         self.user_info = None
 
     async def login(self, validate_only: bool = False) -> dict[str, Any]:
+        _LOGGER.debug('EufyApi login', {'username': self.username})
         session = await self.eufy_login()
         if validate_only:
             return {'session': session}
@@ -144,6 +148,7 @@ class EufyApi:
                     print(await response.json())
 
     async def get_mqtt_credentials(self):
+        _LOGGER.debug('EufyApi get_mqtt_credentials')
         async with aiohttp.ClientSession() as session:
             async with session.post(
                 'https://aiot-clean-api-pr.eufylife.com/app/devicemanage/get_user_mqtt_info',
