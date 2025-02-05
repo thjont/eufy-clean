@@ -1,8 +1,11 @@
+import logging
 from typing import Any
 
 from ..api.EufyApi import EufyApi
 from ..api.TuyaCloudApi import TuyaCloudApi
 from ..controllers.Base import Base
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class EufyLogin(Base):
@@ -11,7 +14,7 @@ class EufyLogin(Base):
         self.eufyApi = EufyApi(username, password, openudid)
         self.username = username
         self.password = password
-        self.sid = None
+        self.sid: str = None  # Tuya Cloud session ID
         self.mqtt_credentials = None
         self.mqtt_devices = []
         self.eufy_api_devices = []
@@ -30,9 +33,12 @@ class EufyLogin(Base):
         if not eufyLogin:
             raise Exception('Login failed')
 
-        self.mqtt_credentials = eufyLogin['mqtt']
+        self.mqtt_credentials = eufyLogin.get('mqtt')
+        if not self.mqtt_credentials:
+            _LOGGER.warning('No MQTT credentials found')
 
         self.tuya_api = TuyaCloudApi(self.username, self.password, eufyLogin['session']['user_id'], self.region)
+        self.sid = await self.tuya_api.login()
 
     async def checkLogin(self):
         if not self.sid:

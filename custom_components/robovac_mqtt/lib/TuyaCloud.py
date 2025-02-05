@@ -2,15 +2,16 @@ import asyncio
 import hashlib
 import hmac
 import json
+import math
 import random
 import string
 import time
 import uuid
 
 import aiohttp
-from Crypto.Cipher import AES
+from Crypto.Cipher import AES, PKCS1_OAEP
+from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
-from Crypto.Util.Padding import pad
 
 
 class TuyaCloudRequestError(Exception):
@@ -57,13 +58,12 @@ class TuyaCloud:
         if not self.sid and options.get('requiresSID', True):
             raise ValueError('Must call login() first.')
 
-        d = int(time.time())
+        d = int(time.time() * 1000)
         pairs = {
             'a': options['action'],
             'deviceId': self.deviceID,
             'sdkVersion': '3.0.0cAnker',
             'os': 'Android',
-            'lang': 'en',
             'appVersion': '2.3.2',
             'v': options.get('version', '1.0'),
             'clientId': self.key,
@@ -71,7 +71,7 @@ class TuyaCloud:
         }
 
         if options.get('data'):
-            pairs['postData'] = json.dumps(options['data'])
+            pairs['postData'] = json.dumps(options['data'], separators=(',', ':'))
         if options.get('gid'):
             pairs['gid'] = options['gid']
         if self.apiEtVersion:
@@ -142,10 +142,21 @@ class TuyaCloud:
         })
 
         key = RSA.construct((int(token['publicKey'], 16), int(token['exponent'])))
-        cipher = AES.new(b'$N\x6d\x8aV\xac\x87\x91$C-\x8bl\xbc\xa2\xc4', AES.MODE_CBC, b'w$V\xf2\xa7fL\xf39,5\x97\xe9>WG')
-        filleduid = pad(f"eh-{options['uid']}".encode(), AES.block_size)
-        encrypted = cipher.encrypt(filleduid).hex().upper()
-        encrypted_pass = key.encrypt(hashlib.md5(encrypted.encode()).digest(), 32)[0].hex()
+        cipher_rsa = PKCS1_OAEP.new(key, hashAlgo=SHA256)
+
+        cipher_aes = AES.new(
+            bytes([36, 78, 109, 138, 86, 172, 135, 145, 36, 67, 45, 139, 108, 188, 162, 196]),
+            # b'$N\x6d\x8aV\xac\x87\x91$C-\x8bl\xbc\xa2\xc4',
+            AES.MODE_CBC,
+            bytes([119, 36, 86, 242, 167, 102, 76, 243, 57, 44, 53, 151, 233, 62, 87, 71]),
+            # b'w$V\xf2\xa7fL\xf39,5\x97\xe9>WG'
+        )
+        _uid = 'eh-' + options['uid']
+        padding_size = 16 * math.ceil(len(_uid) / 16)
+        filleduid = _uid.zfill(padding_size).encode()
+        encrypted_uid = cipher_aes.encrypt(filleduid).hex().upper()
+
+        encrypted_pass = cipher_rsa.encrypt(hashlib.md5(encrypted_uid.encode()).digest().hex().encode()).hex()
 
         api_result = await self.request({
             'action': 'tuya.m.user.uid.password.login',

@@ -17,19 +17,21 @@ class TuyaCloudApi:
             key='yx5v9uc3ef9wg3v9atje',
             secret='s8x78u7xwymasd9kqa7a73pjhxqsedaj',
             secret2='cepev5pfnhua4dkqkdpmnrdxx378mpjr',
-            cert_sign='A',
-            api_et_version='0.0.1',
+            certSign='A',
+            apiEtVersion='0.0.1',
             region=region,
             ttid='android',
         ))
 
     async def login(self) -> str:
-        return await self.tuya_cloud.login_ex(
+        sid = await self.tuya_cloud.login_ex(dict(
             email=self.username,
             password=self.password,
             uid=self.user_id,
             return_full_login_response='false'
-        )
+        ))
+        _LOGGER.debug('Logged in to Tuya Cloud', {'sid': sid})
+        return sid
 
     async def get_device_list(self) -> list:
         groups = await self.tuya_cloud.request(action='tuya.m.location.list')
